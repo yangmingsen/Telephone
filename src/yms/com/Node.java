@@ -1,6 +1,8 @@
 package yms.com;
 
-public class Node {
+import java.io.Serializable;
+
+public class Node implements Serializable{
     private Person data;
     public Node next = null;
 

@@ -4,7 +4,8 @@ import yms.com.*;
 public class Main {
 
     public static void main(String[] args) {
-       Contacts con = new Contacts();
+       Contacts con = Contacts.getInstance();
        con.programRuning();
+       con.writeDataToFile();
     }
 }

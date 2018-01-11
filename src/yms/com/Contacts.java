@@ -2,6 +2,7 @@ package yms.com;
 
 import com.sun.org.apache.xerces.internal.impl.xpath.regex.Match;
 
+import java.io.*;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -10,8 +11,9 @@ import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.io.*;
 
-public class Contacts {
+public class Contacts implements Serializable {
     private static final String URL = "jdbc:mysql://localhost:3306/Data2017";
     private static final String USER = "root";
     private static final String PASS = "123456";
@@ -19,20 +21,30 @@ public class Contacts {
     private Node head;//List header
     private int length;
 
-    public Contacts() {
+    private static Contacts contacts = null;
+
+    private Contacts(){
         try {
             loadData();
         }catch (Exception e){
             e.printStackTrace();
         }
+      // readDataFromFile();
         this.length = 0;
+    }
+
+    public static Contacts getInstance(){
+        if (contacts == null){
+            contacts = new Contacts();
+        }
+        return contacts;
     }
 
     /*
             @per Per indicate incoming data
             @explain:method for add Element
          */
-    public void addNode(Person per){
+    private void addNode(Person per){
         Node newnode = new Node(per);
         if(head == null){ //If the head is empty, the instance of it, to avoid NULLPointerException.
             head = newnode;
@@ -49,7 +61,7 @@ public class Contacts {
     /*
         @explain:This function enters the data load function
      */
-    public void loadData() throws Exception{
+    private void loadData() throws Exception{
         Connection conn = null;
         PreparedStatement pstmt = null;
         ResultSet rs = null;
@@ -76,7 +88,7 @@ public class Contacts {
     /*
         @explain:The method is to sort the Node objects.
      */
-    public void chooseSort(){
+    private void chooseSort(){
         Node curNode = head;
         Node nextNode = null;
         Person tmpPer = null;
@@ -99,7 +111,7 @@ public class Contacts {
         @explain:The function of this method is to print out all contact name information.
         @tmp: A temp variable
      */
-    public void printInfo(){
+    private void printInfo(){
         Node tmp = head;
         char ch1,ch2;
         ch1 = ch2 = '0';
@@ -118,7 +130,7 @@ public class Contacts {
         }
     }
 
-    public void userIndex(){
+    private void userIndex(){
         System.out.println("\n                My Friendly"                 );
         System.out.println("--------------------------------------------");
         System.out.println("----------|1.Search for you want!|----------");
@@ -140,6 +152,70 @@ public class Contacts {
             String cmd = sc.nextLine();
             cmdAnalyzer(cmd);
         }
+
+    }
+
+    public void writeDataToFile() {
+        Node node = this.head;
+        File file = new File("/home/yms/文档/Contacts.txt");
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        try {
+            BufferedWriter bw = new BufferedWriter(new FileWriter(file));
+            while (node != null) {
+                bw.write(node.getData().getPhone()+" "+node.getData().getName()+
+                        " "+node.getData().getType()+" "+node.getData().getEmail()+"\n");
+                node = node.next;
+            }
+            bw.flush();
+            bw.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    public void readDataFromFile() {
+        File file = new File("/home/yms/文档/Contacts.txt");
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        try {
+            @SuppressWarnings("resource")
+            BufferedReader br = new BufferedReader(new FileReader(file));
+
+            String tmp = "";
+            while ((tmp = br.readLine()) != null) {
+                String conta[] = tmp.trim().split(" ");
+
+                String ph = conta[0];
+                String na = conta[1];
+                String ty = conta[2];
+                String em = conta[3];
+
+                Person per = new Person(ph,na,ty,em);
+
+                addNode(per);
+                this.length++;
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        chooseSort();
+
     }
 
     /*
@@ -147,23 +223,25 @@ public class Contacts {
          it will parse all the instructions you enter and return to you want.
 
      */
-     public void cmdAnalyzer(String cmd) {
+    private void cmdAnalyzer(String cmd) {
         Scanner sc = new Scanner(System.in);
         final char SEARCH = 1;
          final char MODIFY = 2;
          final char ADD = 3;
          final char DLETE = 4;
-
          //If the instruction length is 1,
          // it means that it may be executing a first-level instruction or querying the first letter of the name.
          if( (cmd.length() == 1)&&(cmd.charAt(0)>='0'&&cmd.charAt(0)<='9')){
              char ch = cmd.charAt(0);
-             System.out.println("ch = "+(int)ch);
             if(((int)ch)>=48 && ((int)ch)<=57 ){
                 int choose = (int)ch - 48;
 
                 switch (choose){
-                    case SEARCH:mainSearch(cmd);break;
+                    case SEARCH:{
+                            System.out.print("Please input Key:");
+                        String searchKey = sc.nextLine();
+                        this.mainSearch(searchKey);
+                    }break;
                     case MODIFY:{
 
                     }break;
@@ -306,7 +384,7 @@ public class Contacts {
 
      }
 
-     public void deleteDataFromDb(String key_phone) throws Exception{
+    private void deleteDataFromDb(String key_phone) throws Exception{
          System.out.println("key: "+key_phone);
          Connection conn = null;
          PreparedStatement pstmt = null;
@@ -320,9 +398,11 @@ public class Contacts {
          pstmt.close();
          conn.close();
 
+         this.length--;
+
      }
 
-     public void mainSearch(String key){
+    private void mainSearch(String key){
 
             if(key.length() == 1){
                 System.out.println("----------------|搜索如下|-------------");
@@ -408,7 +488,7 @@ public class Contacts {
             String wait = sc.nextLine();
      }
 
-     public ArrayList<String> searchPhone(String key){
+    private ArrayList<String> searchPhone(String key){
         ArrayList phone = new ArrayList();
         Node tmp = this.head;
 
@@ -421,7 +501,7 @@ public class Contacts {
         return phone;
      }
 
-     public ArrayList<String> searchName(String key){
+    private ArrayList<String> searchName(String key){
          ArrayList name = new ArrayList();
          Node tmp = this.head;
 
@@ -432,5 +512,10 @@ public class Contacts {
              tmp = tmp.next;
          }
          return name;
+
      }
+
+
 }
+
+
